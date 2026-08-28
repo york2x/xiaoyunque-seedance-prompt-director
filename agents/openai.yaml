@@ -1,0 +1,4 @@
+interface:
+  display_name: "小云雀 Seedance 提示词导演"
+  short_description: "为小云雀 Seedance 2.0/2.5 生成、优化和审核视频提示词"
+  default_prompt: "Use $xiaoyunque-seedance-prompt-director to generate or optimize a Xiaoyunque Seedance 2.0/2.5 video prompt from my references, timeline, camera plan, sound design, and constraints."
