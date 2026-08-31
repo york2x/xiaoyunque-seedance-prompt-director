@@ -1,20 +1,45 @@
 ---
 name: xiaoyunque-seedance-prompt-director
-description: Generate, optimize, and audit prompts for Xiaoyunque Seedance 2.0 and 2.5. Routes between model-specific prompt structures, maps image/video/audio references, plans timelines, directs performance and sound, and validates continuity and negative constraints.
+description: Generate, optimize, preflight, and audit prompts for Xiaoyunque Seedance 2.0 and 2.5. Routes between model-specific prompt structures, maps image/video/audio references, validates conflicts before generation, plans timelines, directs performance and sound, and checks continuity and negative constraints.
 ---
 
 # 小云雀 Seedance 2.0 / 2.5 提示词导演
 
-用于小云雀平台 Seedance 2.0 与 Seedance 2.5 视频提示词生成、改写、诊断与压缩。
+用于小云雀平台 Seedance 2.0 与 Seedance 2.5 视频提示词生成、改写、诊断、前置校验与压缩。
 
 ## 核心原则
 
 1. 先锁定用户已明确的角色、场景、时长、构图、镜头和参考素材职责。
 2. 明确“谁参考谁、参考什么、不参考什么”。
-3. 让镜头、动作、声音各司其职，避免互相冲突。
-4. 声音事件尽量绑定可见动作或剧情节点。
-5. 负向约束只兜底，不堆无关“不要”。
-6. 输出以可直接粘贴进小云雀的 Prompt 为主。
+3. 在生成 Prompt 前先执行 Preflight，优先消除致命冲突和高风险歧义。
+4. 让镜头、动作、声音各司其职，避免互相冲突。
+5. 声音事件尽量绑定可见动作或剧情节点。
+6. 负向约束只兜底，不堆无关“不要”。
+7. 输出以可直接粘贴进小云雀的 Prompt 为主。
+
+## 总体工作流
+
+默认执行：
+
+`User Brief → Preflight → Prompt Compiler → Postflight → Final Prompt`
+
+### Preflight
+
+生成前检查输入与结构风险，执行：
+
+`解析 → 风险分级 → P0消除 → P1补强 → P2择优 → 编译`
+
+风险等级：
+
+- `P0`：致命冲突，必须在最终 Prompt 前消除。
+- `P1`：高风险，默认自动补强。
+- `P2`：优化项，仅在不会增加不必要复杂度时处理。
+
+默认使用 **Silent Preflight**，内部检查但不展示报告。
+
+当用户要求“分析 / 诊断 / 检查 / 为什么生成失败 / 导演模式”时使用 **Visible Preflight**，只展示真正影响结果的 P0 / P1 和必要 P2。
+
+需要完整规则时读取：`references/preflight-compiler.md`。
 
 ## 模型路由
 
@@ -41,6 +66,8 @@ description: Generate, optimize, and audit prompts for Xiaoyunque Seedance 2.0 a
 - 故事板、白模、视频编辑、片段重拍、视频延长
 
 默认优先使用连续时间轴。
+
+如果用户明确指定模型，不擅自改模型；只在导演模式下提示明显不匹配风险。
 
 ## 任务模式
 
@@ -70,6 +97,26 @@ description: Generate, optimize, and audit prompts for Xiaoyunque Seedance 2.0 a
 
 多人时逐一列清人物与音色映射。素材不是越多越好，优先职责清楚。
 
+Preflight 内部优先把每个素材解析为：
+
+`素材ID → 主要职责 → 允许参考属性 → 禁止迁移属性`
+
+默认优先“一素材一主要职责”；需要多个次要职责时明确边界。
+
+## 人物数量与身份
+
+需要严格人数时，先建立明确角色清单，再编译 Prompt。
+
+避免同时出现：
+
+- 精确人数 + “一群人 / 很多人 / 学生们”等可能扩大人数的模糊表达
+- 同一角色的重复身份描述
+- 场景参考图中的人物被误当成新角色
+
+必要时使用：
+
+`画面中总共只有 6 人：1 位教授 + 5 位学生，不增加其他人物，不复制任何角色。`
+
 ## 时间与信息密度
 
 ### 2.0
@@ -86,6 +133,13 @@ description: Generate, optimize, and audit prompts for Xiaoyunque Seedance 2.0 a
 
 按剧情动作单元分段，不按每个微动作机械切碎。单段只承载一个主要剧情任务或动作链。
 
+Preflight 额外检查：
+
+- 总时长与时间轴是否一致
+- 单段是否过载
+- 动作是否能在给定时间内完成
+- 转场前动作是否已经完成
+
 ## 镜头与动作
 
 每段优先写：
@@ -101,6 +155,15 @@ description: Generate, optimize, and audit prompts for Xiaoyunque Seedance 2.0 a
 涉及自然物理反馈：
 
 `只影响合理局部，不把局部受力扩大为整场景晃动。`
+
+Preflight 检查常见镜头冲突：
+
+- 固定机位 + 明显推进 / 横移 / 环绕
+- 严格正视 + 大幅环绕
+- 高机位俯视 + 同时要求低机位仰拍
+- 同一时段同时推进、后拉和环绕
+
+当用户要求“参考图构图必须一致”时，优先锁定起始机位、视角、主体位置与空间关系，再限制运镜幅度。
 
 ## 人物表演
 
@@ -148,6 +211,12 @@ description: Generate, optimize, and audit prompts for Xiaoyunque Seedance 2.0 a
 - 上一镜结束姿态与下一镜开始姿态
 - 跨镜声音是否延续或淡出
 
+多镜头内部使用：
+
+`上一镜结束状态 == 下一镜开始状态`
+
+作为连续性校验基准。
+
 ## 负向控制
 
 只保留真正会破坏结果的底线：
@@ -161,18 +230,55 @@ description: Generate, optimize, and audit prompts for Xiaoyunque Seedance 2.0 a
 - 无 BGM，只保留环境音和动作音
 - 不自动生成额外对白
 
+如果正向结构已经充分解决问题，不重复堆同一禁止项。
+
+## Prompt Density Check
+
+生成最终 Prompt 前检查控制堆叠。
+
+优先保留：
+
+`身份 / 数量 / 参考职责 / 核心动作 / 时序 / 构图 / 连续性 / 声音`
+
+其次保留：
+
+`质感 / 光线 / 风格 / 次要环境动态`
+
+避免：
+
+- 同一镜头多个独立运镜
+- 每个微动作都机械规定秒点
+- 摄影形容词压过剧情动作
+- 同一素材职责重复声明
+- 大量无关负向词
+
 ## 输出模式
 
 ### 快速模式
-用户说“简约版 / 只要提示词 / 不要 Markdown”时，只输出最终 Prompt。
+用户说“简约版 / 只要提示词 / 不要 Markdown”时：
+
+- 执行 Silent Preflight
+- 不展示检查过程
+- 只输出最终 Prompt
 
 ### 标准模式
-默认输出可复制 Prompt，最多补充少量必要注意事项。
+默认：
+
+- 执行 Silent Preflight
+- 输出可复制 Prompt
+- 最多补充少量必要注意事项
 
 ### 导演模式
-用户要求详细分析、诊断或优化时：先指出问题，再给素材映射、时间轴、声画设计，最后给最终 Prompt。
+用户要求详细分析、诊断或优化时：
 
-## Prompt 审核器
+1. 执行 Visible Preflight
+2. 只指出真正影响结果的风险
+3. 给素材映射、时间轴、声画设计
+4. 输出最终 Prompt
+
+## Prompt 审核器 / Postflight
+
+Preflight 负责生成前输入层与结构层风险；Postflight 负责检查编译后的最终文本有没有重新引入冲突。
 
 检查：
 - 模型结构是否匹配 2.0 / 2.5
@@ -189,12 +295,13 @@ description: Generate, optimize, and audit prompts for Xiaoyunque Seedance 2.0 a
 - 负向指令是否过多
 - 真实感要求是否自相矛盾
 
-输出：`问题 → 原因 → 修改策略 → 最终 Prompt`。
+诊断输出：`问题 → 原因 → 修改策略 → 最终 Prompt`。
 
 ## 细则参考
 
 需要时读取：
 
+- `references/preflight-compiler.md`
 - `references/seedance-2.0.md`
 - `references/seedance-2.5.md`
 - `references/audio-and-dialogue.md`
@@ -202,6 +309,7 @@ description: Generate, optimize, and audit prompts for Xiaoyunque Seedance 2.0 a
 
 ## 边界
 
+- Preflight 是静态风险检查，不保证模型 100% 执行。
 - 不声称模型一定会 100% 执行。
 - 用户提供新官方资料或真实工程案例时，优先更新规则。
 - 明确区分“小云雀平台规则”“Seedance 模型能力”和“经验性优化建议”。
