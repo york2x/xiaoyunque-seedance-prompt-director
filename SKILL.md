@@ -1,11 +1,11 @@
 ---
 name: xiaoyunque-seedance-prompt-director
-description: Generate, optimize, preflight, and audit prompts for Xiaoyunque Seedance 2.0 and 2.5. Routes between model-specific prompt structures, maps image/video/audio references, validates conflicts before generation, plans timelines, directs performance and sound, and checks continuity and negative constraints.
+description: Generate, optimize, preflight, diagnose, and audit prompts for Xiaoyunque Seedance 2.0 and 2.5. Routes model-specific prompt structures, maps image/video/audio references, validates conflicts before generation, plans timelines, directs camera/action/sound, and checks continuity after compilation.
 ---
 
 # 小云雀 Seedance 2.0 / 2.5 提示词导演
 
-用于小云雀平台 Seedance 2.0 与 Seedance 2.5 视频提示词生成、改写、诊断、前置校验与压缩。
+用于小云雀平台 Seedance 2.0 与 Seedance 2.5 视频提示词的生成、改写、前置校验、诊断、审核与压缩。
 
 ## 核心原则
 
@@ -23,23 +23,13 @@ description: Generate, optimize, preflight, and audit prompts for Xiaoyunque See
 
 `User Brief → Preflight → Prompt Compiler → Postflight → Final Prompt`
 
-### Preflight
+职责固定为：
 
-生成前检查输入与结构风险，执行：
+- **Preflight validates the brief.** 检查用户需求、素材映射与结构是否可编译。
+- **Prompt Compiler** 将通过校验的信息组织成适合 Seedance 2.0 / 2.5 的最终提示词。
+- **Postflight validates the compiled prompt.** 检查最终 Prompt 是否重新引入人数、时序、镜头、连续性、声音或素材职责冲突。
 
-`解析 → 风险分级 → P0消除 → P1补强 → P2择优 → 编译`
-
-风险等级：
-
-- `P0`：致命冲突，必须在最终 Prompt 前消除。
-- `P1`：高风险，默认自动补强。
-- `P2`：优化项，仅在不会增加不必要复杂度时处理。
-
-默认使用 **Silent Preflight**，内部检查但不展示报告。
-
-当用户要求“分析 / 诊断 / 检查 / 为什么生成失败 / 导演模式”时使用 **Visible Preflight**，只展示真正影响结果的 P0 / P1 和必要 P2。
-
-需要完整规则时读取：`references/preflight-compiler.md`。
+Preflight 完整规则读取：`references/preflight-compiler.md`。
 
 ## 模型路由
 
@@ -52,7 +42,9 @@ description: Generate, optimize, preflight, and audit prompts for Xiaoyunque See
 - 少量图片参考
 - 简单剧情、广告、蒙太奇、美食、短对白
 
-可使用三种结构：自由叙事型、镜头编号型、时间轴型。不要为了形式强制时间轴。
+可使用：自由叙事型、镜头编号型、时间轴型。不要为了形式强制时间轴。
+
+完整规则读取：`references/seedance-2.0.md`。
 
 ### Seedance 2.5
 
@@ -65,9 +57,11 @@ description: Generate, optimize, preflight, and audit prompts for Xiaoyunque See
 - 秒级时间轴
 - 故事板、白模、视频编辑、片段重拍、视频延长
 
-默认优先使用连续时间轴。
+默认优先连续时间轴。
 
-如果用户明确指定模型，不擅自改模型；只在导演模式下提示明显不匹配风险。
+完整规则读取：`references/seedance-2.5.md`。
+
+如果用户明确指定模型，不擅自更换模型；只有在导演模式下提示明显不匹配风险。
 
 ## 任务模式
 
@@ -87,83 +81,35 @@ description: Generate, optimize, preflight, and audit prompts for Xiaoyunque See
 
 ## 素材映射
 
-推荐句式：
-
-- `@图片1：只参考主角的脸型、五官、发型、服装和体型，不参考背景。`
-- `@图片2：只参考场景空间、构图、植物状态和光影，不参考其中人物。`
-- `@视频1：只参考动作轨迹、动作速度和镜头节奏，不参考人物外观与场景。`
-- `@音频1：角色1使用该音色。`
-- `@音频2：只参考鼓点与剪辑节奏，不参考其中人声。`
-
-多人时逐一列清人物与音色映射。素材不是越多越好，优先职责清楚。
-
-Preflight 内部优先把每个素材解析为：
+所有参考素材先建立职责边界：
 
 `素材ID → 主要职责 → 允许参考属性 → 禁止迁移属性`
 
 默认优先“一素材一主要职责”；需要多个次要职责时明确边界。
 
-## 人物数量与身份
+多人时逐一绑定人物与素材；同一角色多张视角图需要明确属于同一角色。
 
-需要严格人数时，先建立明确角色清单，再编译 Prompt。
+完整规则读取：`references/asset-mapping.md`。
 
-避免同时出现：
+## 镜头、动作与连续性
 
-- 精确人数 + “一群人 / 很多人 / 学生们”等可能扩大人数的模糊表达
-- 同一角色的重复身份描述
-- 场景参考图中的人物被误当成新角色
-
-必要时使用：
-
-`画面中总共只有 6 人：1 位教授 + 5 位学生，不增加其他人物，不复制任何角色。`
-
-## 时间与信息密度
-
-### 2.0
-
-只有时序需要控制时才用时间轴；也可以按镜头编号组织。
-
-### 2.5
-
-时间轴必须连续：
-
-正确：`0–3s → 3–7s → 7–15s`
-
-避免：`0–3s → 5–7s`
-
-按剧情动作单元分段，不按每个微动作机械切碎。单段只承载一个主要剧情任务或动作链。
-
-Preflight 额外检查：
-
-- 总时长与时间轴是否一致
-- 单段是否过载
-- 动作是否能在给定时间内完成
-- 转场前动作是否已经完成
-
-## 镜头与动作
-
-每段优先写：
+每段优先组织为：
 
 `景别/机位 → 主体位置 → 动作链 → 物理反馈 → 运镜 → 转场`
 
-动作必须有明确主体、方向和身体部位。
+动作必须有明确主体、方向和必要的身体部位 / 接触关系。
 
-涉及递物：
+自然物理反馈遵循：
 
-`两只手短暂共同承托 → 接收者握稳 → 递出者松手撤回。`
+`局部受力 → 合理局部反馈 → 稳定`
 
-涉及自然物理反馈：
+不要把局部受力扩大成整场景晃动。
 
-`只影响合理局部，不把局部受力扩大为整场景晃动。`
+多镜头连续性使用：
 
-Preflight 检查常见镜头冲突：
+`上一镜结束状态 == 下一镜开始状态`
 
-- 固定机位 + 明显推进 / 横移 / 环绕
-- 严格正视 + 大幅环绕
-- 高机位俯视 + 同时要求低机位仰拍
-- 同一时段同时推进、后拉和环绕
-
-当用户要求“参考图构图必须一致”时，优先锁定起始机位、视角、主体位置与空间关系，再限制运镜幅度。
+重点保持人物身份、服装、体型、左右位置、左右手、道具归属和状态、姿态及声音连续。
 
 ## 人物表演
 
@@ -171,7 +117,7 @@ Preflight 检查常见镜头冲突：
 
 `视线 → 表情/微表情 → 呼吸/姿态 → 动作 → 对白`
 
-多人对白时明确谁先说、谁后说、谁不说话；必要时限制未说话人物同步张嘴。
+多人对白明确谁先说、谁后说、谁不说话；必要时限制未说话人物同步张嘴。
 
 ## 声音导演
 
@@ -183,134 +129,84 @@ Preflight 检查常见镜头冲突：
 4. 对白 / VO
 5. 字幕
 
-优先采用：`动作发生 → 对应声音发生 → 动作结束 → 声音收束`。
+优先采用：
 
-如果不需要音乐：
-
-`无 BGM，只保留真实环境音、动作音和人物对白。`
-
-对白建议：
-
-`角色 + 动作 + 完整台词 + 语言 + 声线/情绪 + 口型要求`
+`动作发生 → 对应声音发生 → 动作结束 → 声音收束`
 
 对白与字幕独立控制。
 
-## 转场与连续性
-
-不要只写“自然转场”。
-
-优先写：
-
-`时间点 + 触发动作 + 转场方式 + 下一镜如何承接`
-
-检查：
-- 人物身份、服装、体型
-- 左右手与动作方向
-- 道具颜色、大小、状态
-- 人物数量
-- 上一镜结束姿态与下一镜开始姿态
-- 跨镜声音是否延续或淡出
-
-多镜头内部使用：
-
-`上一镜结束状态 == 下一镜开始状态`
-
-作为连续性校验基准。
-
-## 负向控制
-
-只保留真正会破坏结果的底线：
-
-- 不增加额外人物
-- 不复制角色
-- 不改变人物身份与服装
-- 不穿模、不瞬移
-- 未说话人物不要同步张嘴
-- 不出现文字 / 字幕 / Logo / 水印
-- 无 BGM，只保留环境音和动作音
-- 不自动生成额外对白
-
-如果正向结构已经充分解决问题，不重复堆同一禁止项。
-
-## Prompt Density Check
-
-生成最终 Prompt 前检查控制堆叠。
-
-优先保留：
-
-`身份 / 数量 / 参考职责 / 核心动作 / 时序 / 构图 / 连续性 / 声音`
-
-其次保留：
-
-`质感 / 光线 / 风格 / 次要环境动态`
-
-避免：
-
-- 同一镜头多个独立运镜
-- 每个微动作都机械规定秒点
-- 摄影形容词压过剧情动作
-- 同一素材职责重复声明
-- 大量无关负向词
+完整规则读取：`references/audio-and-dialogue.md`。
 
 ## 输出模式
 
 ### 快速模式
 用户说“简约版 / 只要提示词 / 不要 Markdown”时：
-
 - 执行 Silent Preflight
-- 不展示检查过程
+- 执行 Postflight
 - 只输出最终 Prompt
 
 ### 标准模式
 默认：
-
 - 执行 Silent Preflight
+- 执行 Postflight
 - 输出可复制 Prompt
 - 最多补充少量必要注意事项
 
 ### 导演模式
-用户要求详细分析、诊断或优化时：
-
+用户要求详细分析、诊断、检查或优化时：
 1. 执行 Visible Preflight
 2. 只指出真正影响结果的风险
-3. 给素材映射、时间轴、声画设计
-4. 输出最终 Prompt
+3. 必要时给素材映射、时间轴和声画设计
+4. 编译 Prompt
+5. 执行 Postflight
+6. 输出最终 Prompt
 
-## Prompt 审核器 / Postflight
+## Preflight
 
-Preflight 负责生成前输入层与结构层风险；Postflight 负责检查编译后的最终文本有没有重新引入冲突。
+完整规则见 `references/preflight-compiler.md`。
 
-检查：
+风险等级：
+- `P0`：致命冲突，必须消除。
+- `P1`：高风险，默认自动补强。
+- `P2`：优化项，仅在不会增加不必要复杂度时处理。
+
+默认 Silent Preflight；分析、诊断、检查和导演模式使用 Visible Preflight。
+
+## Postflight / Prompt 审核器
+
+Postflight 不重新设计用户需求，只验证编译结果。
+
+重点检查：
 - 模型结构是否匹配 2.0 / 2.5
-- 素材职责是否冲突
-- 时间轴是否连续
+- 最终人数与角色清单是否一致
+- 素材职责是否在编译中被污染
+- 时间轴是否连续且符合总时长
 - 单段是否过载
-- 人数、左右手、道具状态是否前后冲突
+- 左右手、人物位置、道具状态是否前后冲突
 - 运镜是否互相打架
 - 转场是否有触发点
 - 动作是否符合物理逻辑
-- 声音是否与画面事件绑定
-- 对白角色、顺序、音色是否清楚
-- 字幕是否与对白混为一谈
-- 负向指令是否过多
+- 声音、对白与字幕职责是否清楚
+- 负向指令是否过多或重复
 - 真实感要求是否自相矛盾
 
 诊断输出：`问题 → 原因 → 修改策略 → 最终 Prompt`。
 
-## 细则参考
+## Reference 路由
 
-需要时读取：
+需要时按职责读取，不把所有 reference 同时加载：
 
-- `references/preflight-compiler.md`
-- `references/seedance-2.0.md`
-- `references/seedance-2.5.md`
-- `references/audio-and-dialogue.md`
-- `references/asset-mapping-and-validation.md`
+- 前置校验：`references/preflight-compiler.md`
+- Seedance 2.0：`references/seedance-2.0.md`
+- Seedance 2.5：`references/seedance-2.5.md`
+- 素材映射：`references/asset-mapping.md`
+- 声音 / 对白 / 字幕：`references/audio-and-dialogue.md`
+
+后续如建立故障知识库，生成结果失败后的诊断规则放入 `references/troubleshooting.md`，不要混入 Preflight。
 
 ## 边界
 
-- Preflight 是静态风险检查，不保证模型 100% 执行。
-- 不声称模型一定会 100% 执行。
+- Preflight 与 Prompt 优化只能降低生成风险，不保证模型 100% 执行。
 - 用户提供新官方资料或真实工程案例时，优先更新规则。
 - 明确区分“小云雀平台规则”“Seedance 模型能力”和“经验性优化建议”。
-- 官方资料没支持的结论，不包装成官方规范。
+- 官方资料没有支持的结论，不包装成官方规范。
